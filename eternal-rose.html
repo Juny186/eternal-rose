@@ -1,0 +1,1516 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>eternal_rose.py — RUNNING ∞</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050507; --panel:#0d0d13; --panel2:#10101a; --tabbar:#0a0a10;
+  --border:#1d1d29; --ink:#d6d6e2; --dim:#5b5b70; --dimmer:#3a3a4c;
+  --pink:#ff85a8; --pink2:#ff5f9e; --green:#3ddc84; --red:#ff4d5e;
+  --mono:'JetBrains Mono','Cascadia Code',Consolas,'Courier New',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--mono);overflow:hidden}
+#app{height:100vh;display:flex;flex-direction:column}
+
+#titlebar{height:34px;flex:none;display:flex;align-items:center;gap:14px;
+  background:linear-gradient(#12121a,#0c0c12);border-bottom:1px solid var(--border);padding:0 12px}
+#titlebar .dots{display:flex;gap:7px}
+#titlebar .dots i{width:11px;height:11px;border-radius:50%;background:#2a2a38}
+#titlebar .dots i:nth-child(1){background:#ff5f57}#titlebar .dots i:nth-child(2){background:#febc2e}#titlebar .dots i:nth-child(3){background:#28c840}
+#titlebar .title{flex:1;text-align:center;font-size:11px;color:var(--dim);letter-spacing:.12em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#titlebar .title b{color:#8f8fa8;font-weight:500}
+#titlebar .run{display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.22em;color:var(--green)}
+#titlebar .run .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.72)}}
+
+#split{flex:1;min-height:0;display:flex}
+#editor{width:46%;min-width:380px;flex:none;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--border)}
+#stage{flex:1;min-width:0;position:relative;background:#030304}
+
+.tabs{height:34px;flex:none;display:flex;align-items:flex-end;background:var(--tabbar);border-bottom:1px solid var(--border);padding:0 6px;font-size:11px}
+.tab{padding:7px 14px 6px;color:var(--dim);border:1px solid transparent;border-bottom:none;border-radius:6px 6px 0 0;letter-spacing:.02em}
+.tab.active{color:#e8e8f2;background:var(--panel);border-color:var(--border);position:relative;top:1px}
+.tab .py{color:#7ec9a0;margin-right:6px}
+.banner{flex:none;height:26px;display:flex;align-items:center;gap:8px;padding:0 12px;font-size:9px;letter-spacing:.28em;color:#8a6a78;background:var(--panel2);border-bottom:1px solid var(--border)}
+.banner b{color:var(--pink);font-weight:500}
+#codeWrap{flex:1.25;min-height:0;overflow:hidden;position:relative;padding:10px 0 26px;scrollbar-width:none}
+#codeWrap::-webkit-scrollbar{display:none}
+#code{font-size:12.5px;line-height:1.66;font-family:var(--mono);white-space:pre;width:max-content;min-width:100%;padding-left:6px}
+.cl{display:flex;height:20.8px;align-items:center}
+.cl .no{flex:none;width:44px;text-align:right;padding-right:16px;color:#33334a;user-select:none}
+.cl .tx{color:#c8c8d8;white-space:pre}
+.cl.cur{background:rgba(255,133,164,.07);box-shadow:inset 2px 0 0 var(--pink)}
+.cl.cur .no{color:var(--pink)}
+.cl.cur .tx::after{content:'▌';color:var(--pink);animation:blink 1.05s steps(1) infinite;margin-left:1px}
+@keyframes blink{50%{opacity:0}}
+.tok-k{color:#ff7bab}.tok-s{color:#7ee0a3}.tok-n{color:#9ce0ff}
+.tok-f{color:#86b3ff}.tok-c{color:#4ec9b0}.tok-cm{color:#6a9a72;font-style:italic}
+.tok-sl{color:#ff7bab;font-style:italic}
+
+#console{flex:none;height:128px;background:#08080e;border-top:1px solid var(--border);display:flex;flex-direction:column}
+#console .conbar{flex:none;height:22px;display:flex;align-items:center;gap:8px;padding:0 12px;font-size:9px;letter-spacing:.26em;color:var(--dim);background:#0b0b12;border-bottom:1px solid #15151f}
+#console .conbar b{color:#8f8fa8;font-weight:500}
+#conLines{flex:1;overflow-y:auto;scrollbar-width:none;padding:6px 12px 8px;font-size:10.5px;line-height:1.72}
+#conLines::-webkit-scrollbar{display:none}
+.ln{white-space:pre-wrap;word-break:break-all;color:#9a9ab4;animation:lnIn .35s ease both}
+@keyframes lnIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.ln .c-p{color:var(--green)}
+.ln .c-v{color:var(--pink)}
+.ln .c-w{color:#ffd7e4;font-weight:700;letter-spacing:.12em}
+.ln .c-d{color:var(--dimmer)}
+
+.statusbar{flex:none;height:24px;display:flex;align-items:center;gap:18px;padding:0 12px;font-size:9.5px;color:var(--dim);background:var(--panel2);border-top:1px solid var(--border);letter-spacing:.05em}
+.statusbar .grow{flex:1}
+.statusbar .heart{color:var(--pink)}
+
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+#stage::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 3px)}
+#hud{position:absolute;inset:0;pointer-events:none}
+.meta{position:absolute;top:16px;left:20px;font-size:9.5px;line-height:1.9;letter-spacing:.18em;color:var(--dim)}
+.meta b{color:#9a9ab4;font-weight:500}
+#gen{position:absolute;top:16px;right:22px;text-align:right}
+#genLabel{font-size:9.5px;letter-spacing:.34em;color:#c98ca4;margin-bottom:6px}
+#genPct{font-size:23px;font-weight:700;color:var(--pink);letter-spacing:.06em;
+  text-shadow:0 0 14px rgba(255,95,158,.65),0 0 40px rgba(255,95,158,.3)}
+#genBar{width:150px;height:2px;background:rgba(255,133,164,.16);margin:8px 0 0 auto;border-radius:2px;overflow:hidden}
+#genBar i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--pink2),var(--pink));box-shadow:0 0 8px var(--pink2)}
+#dedication{position:absolute;bottom:36px;left:0;right:0;text-align:center;pointer-events:none}
+#dedication .inf{display:block;font-size:13px;color:var(--pink);letter-spacing:.5em;margin-bottom:8px;opacity:.9;text-shadow:0 0 10px rgba(255,95,158,.8)}
+#dedication .words{font-size:15px;color:#fff;letter-spacing:.46em;text-indent:.46em;display:inline-block;
+  text-shadow:0 0 12px rgba(255,160,195,.55),0 0 42px rgba(255,95,158,.3)}
+#dedication .words.beat{animation:beat 2.6s ease-in-out infinite}
+@keyframes beat{
+  0%,100%{transform:scale(1);text-shadow:0 0 12px rgba(255,160,195,.55),0 0 42px rgba(255,95,158,.3)}
+  12%{transform:scale(1.045);text-shadow:0 0 22px rgba(255,190,215,.95),0 0 64px rgba(255,95,158,.6)}
+  24%{transform:scale(1)}
+  36%{transform:scale(1.028);text-shadow:0 0 18px rgba(255,180,210,.85),0 0 54px rgba(255,95,158,.5)}
+  48%{transform:scale(1)}
+}
+#hint{position:absolute;bottom:11px;left:0;right:0;text-align:center;font-size:8.5px;letter-spacing:.3em;color:var(--dimmer)}
+#ctrls{position:absolute;top:14px;left:50%;transform:translateX(-50%);display:flex;gap:10px}
+#ctrls button{pointer-events:auto;cursor:pointer;background:rgba(255,133,164,.08);border:1px solid rgba(255,133,164,.35);color:var(--pink);
+  font-family:var(--mono);font-size:9px;letter-spacing:.3em;padding:7px 16px 6px 19px;border-radius:20px;transition:.25s;backdrop-filter:blur(4px)}
+#ctrls button:hover{background:rgba(255,133,164,.18);box-shadow:0 0 18px rgba(255,95,158,.35)}
+#recbtn{background:rgba(255,77,94,.08)!important;border-color:rgba(255,77,94,.4)!important;color:var(--red)!important}
+#recbtn:hover{background:rgba(255,77,94,.18)!important;box-shadow:0 0 18px rgba(255,77,94,.4)!important}
+#recbtn.rec{animation:recpulse 1.2s ease-in-out infinite}
+@keyframes recpulse{0%,100%{opacity:1}50%{opacity:.45}}
+#glfail{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:12px;color:var(--dim);letter-spacing:.2em;text-align:center;padding:0 30px}
+
+#taskbar{height:32px;flex:none;display:flex;align-items:center;background:rgba(10,10,16,.92);border-top:1px solid var(--border);padding:0 14px;backdrop-filter:blur(6px)}
+#taskbar .win{width:17px;height:17px;display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-right:16px}
+#taskbar .win i{background:#8a8aa5;border-radius:1px}
+#taskbar .search{flex:1;max-width:230px;height:19px;border-radius:10px;border:1px solid #22222f;display:flex;align-items:center;padding:0 10px;font-size:9px;color:var(--dimmer);gap:6px}
+#taskbar .search::before{content:'⌕';color:var(--dim);font-size:11px}
+#taskbar .apps{flex:1;display:flex;justify-content:center;gap:14px}
+#taskbar .apps i{width:15px;height:15px;border-radius:3.5px;background:#232334;border:1px solid #2e2e42}
+#taskbar .apps i.on{background:linear-gradient(135deg,#ff5f9e,#ff85a8);border-color:transparent;box-shadow:0 0 10px rgba(255,95,158,.5)}
+#taskbar .clock{font-size:10px;color:#9a9ab4;letter-spacing:.08em;text-align:right;line-height:1.5}
+
+@media (max-width:900px){
+  #split{flex-direction:column}
+  #editor{width:100%;height:45%;min-width:0;order:2;border-right:none;border-top:1px solid var(--border)}
+  #stage{height:55%}
+  .meta{display:none}
+  #console{height:96px}
+  #codeWrap{flex:1}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="titlebar">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <div class="title">eternal_rose.py — <b>WINDOWS PORTABLE / NO PYTHON REQUIRED</b> — 127.0.0.1:4242</div>
+    <div class="run"><span class="pulse"></span>RUNNING&nbsp;∞</div>
+  </header>
+
+  <main id="split">
+    <section id="editor">
+      <div class="tabs">
+        <div class="tab active"><span class="py">✿</span>eternal_rose.py</div>
+        <div class="tab">bouquet_layout.py</div>
+      </div>
+      <div class="banner"><b>◇ SELF-CONTAINED BUILD</b><span>NO PATCH · NO GPU DRIVER · JUST LOVE</span></div>
+      <div id="codeWrap"><pre id="code"></pre></div>
+      <div id="console">
+        <div class="conbar"><b>TERMINAL</b><span>·</span><span>python 3.11.6</span><span style="flex:1"></span><span>UTF-8</span></div>
+        <div id="conLines"></div>
+      </div>
+      <div class="statusbar">
+        <span class="heart">♥ main</span><span>Python 3.11.6</span><span>UTF-8</span>
+        <span class="grow"></span>
+        <span id="lncol">Ln 1, Col 1</span><span>SPACES: 4</span>
+      </div>
+    </section>
+
+    <section id="stage">
+      <canvas id="cv"></canvas>
+      <div id="hud">
+        <div class="meta">
+          <b>eternal_rose.exe</b><br>
+          <span id="renderer">…</span><br>
+          PARTICLES&nbsp;&nbsp;<b id="pcount">0</b><br>
+          RENDER&nbsp;&nbsp;<b id="fpsv">60</b>&nbsp;FPS&nbsp;·&nbsp;GAMMA 2.2
+        </div>
+        <div id="gen">
+          <div id="genLabel">GENERATING ROSES</div>
+          <div id="genPct">000.0%</div>
+          <div id="genBar"><i id="genFill"></i></div>
+        </div>
+        <div id="ctrls">
+          <button id="recbtn">● REC</button>
+          <button id="reseed">REBLOOM ⟳</button>
+        </div>
+        <div id="dedication">
+          <span class="inf">∞</span>
+          <span class="words">FOR YOU, ALWAYS</span>
+        </div>
+        <div id="hint">DOUBLE-CLICK TO REBLOOM · ● REC EXPORTS A VIDEO OF ONE FULL BLOOM</div>
+        <div id="glfail">CANVAS UNAVAILABLE —— 换个现代浏览器再来见她。</div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="taskbar">
+    <div class="win"><i></i><i></i><i></i><i></i></div>
+    <div class="search">Search roses, love, forever…</div>
+    <div class="apps"><i></i><i class="on"></i><i></i><i></i></div>
+    <div class="clock"><span id="clockTime">20:04</span><br></div>
+  </footer>
+</div>
+
+<script>
+'use strict';
+/* ==================================================================
+   eternal_rose v4.0 — 黄金角螺旋玫瑰（俯视花盘）
+   · 根因修正：相机原为仰视（花顶远离镜头），螺旋结构完全不可见 → 改为俯视
+   · 重写：phyllotaxis 螺旋花瓣（k·137.5°）+ 花瓣轮廓线 + 萼片/绿叶/绿茎
+   · 删除花束包装与侧蕾：只留一朵玫瑰，形态即认知
+   · WebGL 路径：9 万+ 粒子，动画全在顶点着色器（含景深 bokeh）
+   · Canvas2D 路径：无 WebGL 时自动降级（密度自动降低，效果一致）
+   · ● REC：MediaRecorder 录制一次完整绽放并导出 mp4/webm
+   Petal math ported from the rose_petal(k, u, v) shown on the left (golden-angle spiral)
+   ================================================================== */
+const TAU=Math.PI*2;
+const FOV=3.0;
+
+/* ---------- 可复现随机数 ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;
+  let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;
+  return((t^t>>>14)>>>0)/4294967296}}
+const lerp=(a,b,t)=>a+(b-a)*t;
+const mixc=(c1,c2,t)=>[lerp(c1[0],c2[0],t),lerp(c1[1],c2[1],t),lerp(c1[2],c2[2],t)];
+
+/* ---------- 花瓣几何：黄金角螺旋（phyllotaxis）----------
+   第 k 片花瓣方位角 k·137.5°，内紧外开、外层反卷下垂
+   u∈[0,1] 基部→尖端，v∈[-1,1] 横向 */
+const GOLDEN=2.399963;
+function rosePoint(k,K,u,v,op){
+  const f=k/Math.max(1,K-1);
+  const phi=k*GOLDEN;
+  const oe=op===undefined?1:Math.pow(op,1.6);   /* 开放度→角度指数压低：半开是杯，紧蕾是束 */
+  const rBase=0.035+0.34*Math.pow(f,1.2);
+  const L=(0.14+0.66*Math.pow(f,1.5))*(op===undefined?1:0.45+0.55*op);
+  /* 开放角：内层 ~18° 直立卷芯，外层张到 ~117° 反卷下垂 —— 盛开姿态（op<1 收成半开/蕾） */
+  const th=0.32+oe*(1.42*Math.pow(f,1.3)+0.30*f*u*u);
+  const W=(0.11+0.19*f)*Math.pow(Math.sin(Math.PI*Math.min(1,u*1.14+0.02)),0.8)*(op===undefined?1:0.62+0.38*op);
+  /* 外层花瓣：边缘微波浪 + 尖端 V 形凹口（真实玫瑰特征） */
+  const ripple=oe*0.026*f*u*u*Math.sin(2.5*v*Math.PI+phi);
+  const notch=oe*0.045*f*u*u*u*Math.exp(-5*v*v);
+  const cp=Math.cos(phi),sp=Math.sin(phi);
+  const r=rBase+Math.sin(th)*L*u+ripple-notch;
+  const px=cp*r-sp*v*W;
+  const pz=sp*r+cp*v*W;
+  const py=0.02+Math.cos(th)*L*u
+          +(0.30-0.22*f)*v*v*Math.sin(Math.PI*u)*0.35
+          +0.014*f*u*u*Math.sin(3*v*Math.PI);
+  return[px,py,pz];
+}
+/* 盛开动画：闭合花苞 → 大角度展开（两条渲染路径共用同一数学）
+   flag 编码花瓣比例 f：flag=0.06+f*0.40（恒 <0.5，不与光球 flag=1 冲突） */
+function openTransform(p,f,birth,t){
+  const o=Math.min(1,Math.max(0,(t-birth-0.35-f*2.4)/2.8));
+  const c1=1.70158,u2=o-1;
+  const e=1+(c1+1)*u2*u2*u2+c1*u2*u2;      /* easeOutBack：轻微过冲再回弹 */
+  const shrink=0.20+0.08*f;                 /* 花苞状态：外层瓣裹在内层外 */
+  const rC=Math.hypot(p[0],p[2]);
+  const lift=rC*(1-shrink)*1.05;            /* 收拢时瓣身立起 → 花苞变高 */
+  return[lerp(p[0]*shrink,p[0],e),
+         lerp(p[1]+lift,p[1],e),
+         lerp(p[2]*shrink,p[2],e)];
+}
+/* 真实玫瑰渐变：内层丝绒玫红 → 珊瑚粉 → 桃粉 → 瓣缘透白（带冷暖偏移） */
+const LAYER_COLS=[[230,62,96],[240,92,124],[248,124,150],[252,156,175],[255,178,192],[255,196,207],[255,214,221]];
+const DEEP=[214,32,80],TIP=[255,236,241],EDGE=[255,150,172],SHADOW=[164,20,60];
+/* 冷暖：内层偏冷紫红，外层偏暖珊瑚 */
+const COOL=[225,88,132],WARM=[255,172,150];
+
+/* ---------- 渲染上下文：优先 WebGL，失败自动降级 Canvas2D ---------- */
+let cv=document.getElementById('cv');
+let gl=null,ctx2d=null,MODE='2d';
+const GL_OPTS={antialias:false,alpha:false,depth:false,stencil:false,powerPreference:'high-performance'};
+function freshCanvas(){
+  const nc=cv.cloneNode(false);
+  cv.parentNode.replaceChild(nc,cv);
+  return nc;
+}
+try{
+  gl=cv.getContext('webgl2',GL_OPTS)||cv.getContext('webgl',GL_OPTS);
+}catch(e){gl=null}
+
+let RNAME='Canvas2D';
+if(gl){
+  RNAME=(cv.getContext('webgl2')===gl)?'WebGL2':'WebGL';
+}else{
+  ctx2d=cv.getContext('2d');
+  if(!ctx2d){document.getElementById('glfail').style.display='flex';throw new Error('no canvas');}
+}
+const GL_OK=!!gl;
+if(GL_OK)MODE='gl';
+document.getElementById('renderer').textContent=RNAME+(GL_OK?' · DOF':'');
+
+/* ---------- 花束配置：多朵玫瑰，绽放波由主花向外扫过（2D 降级减朵） ----------
+   tc/tk：每朵独立色调与混色强度——真实花束里没有两朵同色的玫瑰 */
+const TINTS={
+  red:    [230,28,34],   /* 正红（番茄红，不偏紫） */
+  coral:  [255,120,74],  /* 珊瑚（G>B，橙调） */
+  hot:    [255,52,148],  /* 艳粉（B>G，洋红调） */
+  crimson:[244,44,96],   /* 绯粉 */
+  peach:  [255,140,104], /* 蜜桃（G>B） */
+  wine:   [150,20,80],   /* 酒红 */
+  deep:   [130,12,60],   /* 深酒红 */
+  blush:  [255,196,212], /* 蕾·浅粉 */
+  ivory:  [252,238,226], /* 蕾·奶白 */
+};
+/* 飘瓣粉彩色板：飘落的花瓣不该只有一种粉 */
+const PASTELS=[[255,150,192],[255,190,206],[246,120,152],[255,216,225],[238,106,142],[255,176,158]];
+/* 花店螺旋花束：穹顶构图——花头错落挤成饱满半球，而不是各自分开飘着。
+   op=最终开放度：全开冠花 → 八开的环带 → 紧蕾，花店花束的开放层次。
+   深度：环1 在冠花前下，环2 更低更前，双蕾探在冠缘高处（z 负=朝镜头） */
+const ROSES=(GL_OK?[
+  {x: 0.00,y: 0.38,z: 0.10,s:0.72,b:0.55,K:160,U:22,V:10,E:36,tc:TINTS.red,    tk:0.58,op:1.00}, /* 冠·正红 全开 */
+  {x:-0.68,y: 0.16,z:-0.12,s:0.55,b:1.35,K: 96,U:16,V: 8,E:24,tc:TINTS.coral,  tk:0.68,op:0.80}, /* 环1·珊瑚 */
+  {x: 0.68,y: 0.16,z:-0.12,s:0.55,b:1.60,K: 96,U:16,V: 8,E:24,tc:TINTS.hot,    tk:0.58,op:0.80}, /* 环1·艳粉 */
+  {x: 0.00,y: 0.22,z: 0.72,s:0.55,b:1.85,K: 96,U:16,V: 8,E:24,tc:TINTS.peach,  tk:0.68,op:0.72}, /* 环1后·蜜桃 */
+  {x:-0.60,y:-0.10,z:-0.42,s:0.48,b:2.15,K: 84,U:14,V: 8,E:20,tc:TINTS.crimson,tk:0.55,op:0.62}, /* 环2·绯粉 半开 */
+  {x: 0.60,y:-0.10,z:-0.42,s:0.48,b:2.40,K: 84,U:14,V: 8,E:20,tc:TINTS.wine,   tk:0.62,op:0.62}, /* 环2·酒红 半开 */
+  {x: 0.00,y:-0.24,z:-0.05,s:0.48,b:2.70,K: 84,U:14,V: 8,E:20,tc:TINTS.deep,   tk:0.68,op:0.58}, /* 环2前·深酒红 */
+  {x:-0.30,y: 0.44,z:-0.30,s:0.30,b:3.05,K: 48,U:11,V: 6,E:12,tc:TINTS.blush,  tk:0.50,op:0.34}, /* 蕾·浅粉 */
+  {x: 0.32,y: 0.40,z:-0.32,s:0.30,b:3.40,K: 48,U:11,V: 6,E:12,tc:TINTS.ivory,  tk:0.45,op:0.30}, /* 蕾·奶白 */
+]:[
+  {x: 0.00,y: 0.38,z: 0.10,s:0.72,b:0.55,K: 90,U:11,V:5,E:16,tc:TINTS.red,    tk:0.58,op:1.00},
+  {x:-0.68,y: 0.16,z:-0.12,s:0.55,b:1.35,K: 68,U: 9,V:5,E:12,tc:TINTS.coral,  tk:0.68,op:0.80},
+  {x: 0.68,y: 0.16,z:-0.12,s:0.55,b:1.60,K: 68,U: 9,V:5,E:12,tc:TINTS.hot,    tk:0.58,op:0.80},
+  {x: 0.00,y: 0.22,z: 0.72,s:0.55,b:1.85,K: 64,U: 9,V:5,E:12,tc:TINTS.peach,  tk:0.68,op:0.72},
+  {x:-0.60,y:-0.10,z:-0.42,s:0.48,b:2.15,K: 60,U: 9,V:4,E:10,tc:TINTS.crimson,tk:0.55,op:0.62},
+  {x: 0.60,y:-0.10,z:-0.42,s:0.48,b:2.40,K: 60,U: 9,V:4,E:10,tc:TINTS.wine,   tk:0.62,op:0.62},
+  {x: 0.00,y:-0.24,z:-0.05,s:0.48,b:2.70,K: 56,U: 8,V:4,E:10,tc:TINTS.deep,   tk:0.68,op:0.58},
+  {x:-0.30,y: 0.44,z:-0.30,s:0.30,b:3.05,K: 44,U: 8,V:4,E: 8,tc:TINTS.blush,  tk:0.50,op:0.34},
+]);
+const TOTAL_PETALS=ROSES.reduce((a,r)=>a+r.K,0);
+const U_SEP=GL_OK?10:8, V_SEP=GL_OK?5:4;
+const N_HEART=GL_OK?300:90, N_STEM=GL_OK?800:220, N_LEAF=GL_OK?560:130,
+      N_PAPER=GL_OK?1500:420, N_WRAP=GL_OK?460:150, N_GYP=GL_OK?520:160,
+      N_ORB=GL_OK?260:70, N_DUST=GL_OK?2200:260,
+      N_FALL=GL_OK?30:16, N_BURST=GL_OK?460:90,
+      N_BOKEH=GL_OK?110:30, N_DEW=GL_OK?170:48;
+
+/* ==================================================================
+   WebGL 路径
+   ================================================================== */
+let progPts,progFlat,progGlow,L,LF,LG,bufStatic,bufDyn,bufLine,bufQuad,MAX_PT,dynArr;
+const STRIDE=13;  /* pos3 col3 meta4(size,bright,birth,tw) misc3(ph,flag,drift) */
+const MAX_DYN=N_FALL+N_BURST+16;
+
+if(GL_OK){
+try{
+  function compile(type,src){
+    const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);
+    if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  function program(vs,fs){
+    const p=gl.createProgram();
+    gl.attachShader(p,compile(gl.VERTEX_SHADER,vs));
+    gl.attachShader(p,compile(gl.FRAGMENT_SHADER,fs));
+    gl.linkProgram(p);
+    if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
+    return p;
+  }
+  /* 粒子：出生弹出/呼吸/闪烁/风摆/旋转/透视/景深 全在 GPU */
+  const VS_PTS=`
+  attribute vec3 aPos;
+  attribute vec3 aCol;
+  attribute vec4 aMeta;
+  attribute vec3 aMisc;
+  uniform mat3 uRot;
+  uniform vec2 uCenter, uRes;
+  uniform float uScale, uTime, uBreath, uSway, uFocus, uDOF, uMaxSize;
+  varying vec3 vCol;
+  varying float vAlpha, vSoft;
+  void main(){
+    float birth=aMeta.z;
+    float pop=clamp((uTime-birth)/0.6, 0.0, 1.0);
+    if(pop<=0.0){gl_Position=vec4(2.0,2.0,2.0,1.0);gl_PointSize=0.0;vAlpha=0.0;vSoft=0.0;vCol=vec3(0.0);return;}
+    float u2=pop-1.0;
+    float popE=1.0+2.7*u2*u2*u2+1.7*u2*u2;
+    vec3 p=aPos;
+    /* 盛开动画：花瓣从闭合花苞展开（flag∈(0.02,0.5) 编码花瓣比例） */
+    if(aMisc.y>0.02&&aMisc.y<0.5){
+      float f=(aMisc.y-0.06)*2.5;
+      float o=clamp((uTime-birth-0.35-f*2.4)/2.8,0.0,1.0);
+      float c1=1.70158;
+      float e=1.0+(c1+1.0)*pow(o-1.0,3.0)+c1*pow(o-1.0,2.0);
+      float shrink=0.20+0.08*f;
+      float rC=length(p.xz);
+      vec3 closed=vec3(p.x*shrink, p.y+rC*(1.0-shrink)*1.05, p.z*shrink);
+      p=mix(closed,p,e);
+    }
+    p.x+=uSway*(p.y+1.05);
+    if(aMisc.y>0.5) p.y+=0.045*sin(uTime*0.8+aMisc.x);
+    if(aMisc.z>0.0){
+      float y=p.y-uTime*aMisc.z;
+      p.y=mod(y+1.35+2.5, 2.5)-1.35;
+    }
+    vec3 v=uRot*p;
+    float pe=3.0/(3.0+v.z);
+    vec2 scr=uCenter+vec2(v.x,-v.y)*uScale*pe;
+    gl_Position=vec4(scr.x/uRes.x*2.0-1.0, 1.0-scr.y/uRes.y*2.0, 0.0, 1.0);
+    float tw=aMeta.w>0.0 ? 0.72+0.38*sin(uTime*aMeta.w+aMisc.x) : 1.0;
+    float behind=clamp((v.z-uFocus)*1.1, 0.0, 1.0);   /* 焦后压暗：后景退后，主体浮前 */
+    vAlpha=aMeta.y*popE*tw*(0.6+0.4*pe)*(1.0-0.30*behind);
+    vCol=aCol;
+    float dz=abs(v.z-uFocus);
+    /* 前景虚化放缓：包装纸/缎带/颈叶在焦前但保持可读——花店质感的"柔"而不是"糊" */
+    float fg=mix(1.0, 0.40, clamp((uFocus-v.z)*2.0, 0.0, 1.0));
+    float soft=clamp(dz*uDOF*fg, 0.0, 1.0);
+    vSoft=soft;
+    gl_PointSize=clamp(aMeta.x*pe*uBreath*popE*(1.0+soft*1.7), 1.0, uMaxSize);
+  }`;
+  const FS_PTS=`
+  precision mediump float;
+  varying vec3 vCol;
+  varying float vAlpha, vSoft;
+  void main(){
+    vec2 d=gl_PointCoord-0.5;
+    float r2=dot(d,d)*4.0;
+    float k=mix(7.0, 1.5, vSoft);
+    float g=exp(-r2*k)*smoothstep(1.0, 0.55, r2);
+    gl_FragColor=vec4(vCol*(1.0+(1.0-vSoft)*0.45), vAlpha*g);
+  }`;
+  const VS_FLAT=`
+  attribute vec2 aXY;
+  void main(){gl_Position=vec4(aXY,0.0,1.0);}`;
+  const FS_FLAT=`
+  precision mediump float;
+  uniform vec4 uColor;
+  void main(){gl_FragColor=uColor;}`;
+  const VS_GLOW=`
+  attribute vec2 aUnit;
+  uniform vec2 uCenterPx, uRadiusPx, uRes;
+  varying vec2 vUv;
+  void main(){
+    vUv=aUnit;
+    vec2 px=uCenterPx+aUnit*uRadiusPx;
+    gl_Position=vec4(px.x/uRes.x*2.0-1.0, 1.0-px.y/uRes.y*2.0, 0.0, 1.0);
+  }`;
+  const FS_GLOW=`
+  precision mediump float;
+  uniform vec3 uColor;
+  uniform float uAlpha, uInvert;
+  varying vec2 vUv;
+  void main(){
+    float r=length(vUv);
+    float g=exp(-r*r*3.0)*smoothstep(1.0, 0.82, r);
+    gl_FragColor=vec4(uColor, uAlpha*mix(g, 1.0-g, uInvert));
+  }`;
+
+  progPts=program(VS_PTS,FS_PTS);
+  progFlat=program(VS_FLAT,FS_FLAT);
+  progGlow=program(VS_GLOW,FS_GLOW);
+
+  L={
+    aPos:gl.getAttribLocation(progPts,'aPos'),
+    aCol:gl.getAttribLocation(progPts,'aCol'),
+    aMeta:gl.getAttribLocation(progPts,'aMeta'),
+    aMisc:gl.getAttribLocation(progPts,'aMisc'),
+    uRot:gl.getUniformLocation(progPts,'uRot'),
+    uCenter:gl.getUniformLocation(progPts,'uCenter'),
+    uRes:gl.getUniformLocation(progPts,'uRes'),
+    uScale:gl.getUniformLocation(progPts,'uScale'),
+    uTime:gl.getUniformLocation(progPts,'uTime'),
+    uBreath:gl.getUniformLocation(progPts,'uBreath'),
+    uSway:gl.getUniformLocation(progPts,'uSway'),
+    uFocus:gl.getUniformLocation(progPts,'uFocus'),
+    uDOF:gl.getUniformLocation(progPts,'uDOF'),
+    uMaxSize:gl.getUniformLocation(progPts,'uMaxSize'),
+  };
+  LF={aXY:gl.getAttribLocation(progFlat,'aXY'),uColor:gl.getUniformLocation(progFlat,'uColor')};
+  LG={
+    aUnit:gl.getAttribLocation(progGlow,'aUnit'),
+    uCenterPx:gl.getUniformLocation(progGlow,'uCenterPx'),
+    uRadiusPx:gl.getUniformLocation(progGlow,'uRadiusPx'),
+    uRes:gl.getUniformLocation(progGlow,'uRes'),
+    uColor:gl.getUniformLocation(progGlow,'uColor'),
+    uAlpha:gl.getUniformLocation(progGlow,'uAlpha'),
+    uInvert:gl.getUniformLocation(progGlow,'uInvert'),
+  };
+
+  bufStatic=gl.createBuffer();
+  bufDyn=gl.createBuffer();
+  dynArr=new Float32Array(MAX_DYN*STRIDE);
+  bufLine=gl.createBuffer();
+  bufQuad=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,bufQuad);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,1,1, -1,-1,1,1,-1,1]),gl.STATIC_DRAW);
+  const ptRange=gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE);
+  MAX_PT=Math.min(ptRange[1]||64,160);
+  gl.enable(gl.BLEND);
+  gl.disable(gl.DEPTH_TEST);
+}catch(e){
+  /* WebGL 半途失败 → 换新画布降级 2D */
+  GL_OK=false;MODE='2d';RNAME='Canvas2D';gl=null;
+  cv=freshCanvas();
+  ctx2d=cv.getContext('2d');
+  document.getElementById('renderer').textContent='Canvas2D';
+  if(!ctx2d){document.getElementById('glfail').style.display='flex';throw e;}
+}
+}
+function bindPtsAttrs(){
+  gl.enableVertexAttribArray(L.aPos);
+  gl.vertexAttribPointer(L.aPos,3,gl.FLOAT,false,STRIDE*4,0);
+  gl.enableVertexAttribArray(L.aCol);
+  gl.vertexAttribPointer(L.aCol,3,gl.FLOAT,false,STRIDE*4,12);
+  gl.enableVertexAttribArray(L.aMeta);
+  gl.vertexAttribPointer(L.aMeta,4,gl.FLOAT,false,STRIDE*4,24);
+  gl.enableVertexAttribArray(L.aMisc);
+  gl.vertexAttribPointer(L.aMisc,3,gl.FLOAT,false,STRIDE*4,40);
+}
+function drawGlow(cxpx,cypx,radius,r,g,b,alpha,additive,invert){
+  gl.useProgram(progGlow);
+  if(additive)gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+  else gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  gl.bindBuffer(gl.ARRAY_BUFFER,bufQuad);
+  gl.enableVertexAttribArray(LG.aUnit);
+  gl.vertexAttribPointer(LG.aUnit,2,gl.FLOAT,false,0,0);
+  gl.uniform2f(LG.uCenterPx,cxpx,cypx);
+  gl.uniform2f(LG.uRadiusPx,radius,radius);
+  gl.uniform2f(LG.uRes,W,H);
+  gl.uniform3f(LG.uColor,r,g,b);
+  gl.uniform1f(LG.uAlpha,alpha);
+  gl.uniform1f(LG.uInvert,invert?1:0);
+  gl.drawArrays(gl.TRIANGLES,0,6);
+}
+
+/* ==================================================================
+   Canvas2D 路径（降级）
+   ================================================================== */
+const spriteCache=new Map();
+function sprite(r,g,b){
+  const key=((r>>3)<<10)|((g>>3)<<5)|(b>>3);
+  let s=spriteCache.get(key);
+  if(!s){
+    s=document.createElement('canvas');s.width=s.height=64;
+    const x=s.getContext('2d'),gr=x.createRadialGradient(32,32,0,32,32,32);
+    gr.addColorStop(0,`rgba(${Math.min(255,r+110)},${Math.min(255,g+85)},${Math.min(255,b+85)},1)`);
+    gr.addColorStop(.22,`rgba(${r},${g},${b},.78)`);
+    gr.addColorStop(.55,`rgba(${r},${g},${b},.22)`);
+    gr.addColorStop(1,`rgba(${r},${g},${b},0)`);
+    x.fillStyle=gr;x.fillRect(0,0,64,64);
+    spriteCache.set(key,s);
+  }
+  return s;
+}
+
+/* ==================================================================
+   粒子数据构建（两引擎共用一份 Float32Array）
+   ================================================================== */
+let dataArr=null,PARTS=0,seed=20260925,sortedBirths=null;
+let fallers=[],burst=[];
+
+function emit(arr,i,x,y,z,r,g,b,s,br,birth,tw,ph,flag,dr){
+  const o=i*STRIDE;
+  arr[o]=x;arr[o+1]=y;arr[o+2]=z;
+  arr[o+3]=r/255;arr[o+4]=g/255;arr[o+5]=b/255;
+  arr[o+6]=s;arr[o+7]=br;arr[o+8]=birth;arr[o+9]=tw;
+  arr[o+10]=ph;arr[o+11]=flag;arr[o+12]=dr;
+}
+
+/* 穹顶互遮：被更高花头罩住的区域减光——加法混合没有遮挡，用这个模拟花头挨挤的层次 */
+function domeDim(x,y,z,skip){
+  let m=0;
+  for(let h=0;h<ROSES.length;h++){
+    if(h===skip)continue;
+    const rh=ROSES[h];
+    if(y>=rh.y-0.02)continue;                     /* 只被更高的花头罩住 */
+    const dx=x-rh.x,dy=(y-rh.y)*0.6,dz=z-rh.z;
+    const d=Math.sqrt(dx*dx+dy*dy+dz*dz),R=1.03*rh.s;
+    if(d>=R)continue;
+    const w=(1-d/R)*Math.min(1,(rh.y-y)/0.30);
+    if(w>m)m=w;
+  }
+  return 1-0.50*m;
+}
+function buildRoseInto(arr,base,cx,cy,cz,scale,birth0,K,R,U,V,N_EDGE,tintCol,tintK,op,rid){
+  let i=base;
+  const sMul=Math.sqrt(scale);
+  /* 每朵专属的高光/瓣缘/投影：让色调贯穿瓣尖与轮廓，而不是只染瓣身
+     冷暖也从各自色调派生；橙系（珊瑚/蜜桃）的高光与阴影同步跟暖，不被全局洋红底吃掉 */
+  const warm=tintCol[1]>tintCol[2];
+  const tipC=mixc(TIP,tintCol,warm?0.45:0.32),
+        edgeC=mixc(EDGE,tintCol,warm?0.55:0.45),
+        shadC=mixc(SHADOW,tintCol,warm?0.75:0.55);
+  const coolC=mixc(COOL,tintCol,0.45), warmC=mixc(WARM,tintCol,0.55);
+  /* 外层先发、内层后画：俯视时内层花瓣更靠近镜头，应覆盖在外层之上 */
+  for(let k=K-1;k>=0;k--){
+    const f=k/Math.max(1,K-1);
+    /* 基色：层间渐变后再染每朵自己的色调（红/珊瑚/艳粉/绯粉/蜜桃/酒红…） */
+    const petalCol=mixc(mixc(DEEP,LAYER_COLS[6],Math.pow(f,0.85)*0.92),tintCol,tintK);
+    const tint=R()*0.10;
+    const kB=birth0+f*3.2;
+    /* ---- 花瓣着色（连续柔和，拒绝机械斑马纹）----
+       wave   黄金角相位的正弦调制：每瓣明暗连续起伏，相邻瓣平滑过渡
+       dome   穹顶纵深：内层亮、外层沉
+       ring   环带阶梯（减弱）：螺旋层次可数但不生硬
+       vein   丝绒质感：瓣中轴亮、两侧微暗（圆柱反射观感）
+       glow   瓣尖透光：花瓣边缘薄、半透明，微微发亮 */
+    const wave=0.5+0.5*Math.sin(k*GOLDEN*0.5);
+    const dome=0.62+0.38*Math.pow(1-f,1.3);
+    const ring=1-0.10*(Math.round(f*4.999)%2);
+    const shade=0.82+0.18*wave;
+    for(let iu=0;iu<=U;iu++){
+      const u=iu/U;
+      const birth=kB+u*0.30+R()*0.10;
+      for(let iv=0;iv<V;iv++){
+        const v=-1+2*iv/(V-1);
+        const[px,py,pz]=rosePoint(k,K,u,v,op);
+        const x=cx+px*scale, y=cy+py*scale, z=cz+pz*scale;
+        /* 基色：内冷外暖的连续渐变（冷暖随朵派生） */
+        let c=mixc(petalCol,f<0.5?coolC:warmC,f<0.5?f*0.30:(1-f)*0.30);
+        c=mixc(c,tipC,0.15*Math.pow(u,1.6));                            /* 瓣尖提亮（随朵染色） */
+        c=mixc(c,shadC,(1-u)*0.42+0.18*Math.pow(f,1.5)*(1-u*0.5));      /* 根部阴影+层间投影 */
+        c=mixc(c,petalCol,tint);
+        /* 丝绒：横向亮度沿 |v| 走低再回升（中轴缎面高光）
+           sheen：瓣腹一道缎带反光（u≈0.72 最亮，相位随瓣错开——丝缎不是塑料）
+           rim  ：穹顶上缘受天光，花束顶部轮廓微微发亮，从暗背景里"跳"出来 */
+        const vein=1-0.20*Math.pow(Math.abs(v),1.5)+0.10*Math.pow(Math.abs(v),4);
+        const sheen=0.10*Math.exp(-Math.pow((u-0.72)/0.26,2))*(1-0.7*Math.abs(v))*(0.6+0.4*Math.sin(k*GOLDEN*2.1));
+        const rim=0.08*Math.max(0,(y-cy)/(0.55*scale))*Math.pow(u,1.5);
+        const dust=R()<.04;
+        const br=(0.78+R()*0.16)*(vein+sheen)*(0.60+0.40*u)*dome*ring*shade*(dust?.5:1)*domeDim(x,y,z,rid)*(1+rim);
+        /* 粒子大小：瓣根细密 → 瓣尖舒展（花瓣尖部更宽的观感） */
+        const s=(dust?2.0+R()*1.6:(1.55+R()*1.2)*(0.85+0.55*u))*sMul;
+        emit(arr,i,x,y,z,Math.round(c[0]),Math.round(c[1]),Math.round(c[2]),s,br,birth,(R()<.15?1.2+R()*2:0),R()*TAU,0.06+f*0.40,0);
+        i++;
+      }
+    }
+    /* 花瓣轮廓线：让每片花瓣的边界可读——"像玫瑰"的关键 */
+    for(let e=0;e<N_EDGE;e++){
+      const tt=e/Math.max(1,N_EDGE-1);
+      let u,v;
+      if(tt<0.42){u=tt/0.42;v=1}
+      else if(tt<0.84){u=(tt-0.42)/0.42;v=-1}
+      else{u=1;v=-1+2*(tt-0.84)/0.16}
+      const[px,py,pz]=rosePoint(k,K,u,v*0.98,op);
+      const x=cx+px*scale, y=cy+py*scale, z=cz+pz*scale;
+      let c=mixc(mixc(petalCol,tipC,0.45),edgeC,0.22);
+      c=mixc(c,shadC,(1-u)*0.20);
+      const rimE=0.10*Math.max(0,(y-cy)/(0.55*scale))*Math.pow(u,1.5);   /* 轮廓线也吃天光 */
+      const s=(1.5+R()*1.2)*sMul, br=(0.62+R()*0.34)*dome*(0.85+0.15*wave)*domeDim(x,y,z,rid)*(1+rimE);
+      emit(arr,i,x,y,z,Math.round(c[0]),Math.round(c[1]),Math.round(c[2]),s,br,kB+u*0.30+R()*0.10,0,R()*TAU,0.06+f*0.40,0);
+      i++;
+    }
+  }
+  return i;
+}
+function cubic(p0,p1,p2,p3,t){
+  const a=1-t;
+  return[a*a*a*p0[0]+3*a*a*t*p1[0]+3*a*t*t*p2[0]+t*t*t*p3[0],
+         a*a*a*p0[1]+3*a*a*t*p1[1]+3*a*t*t*p2[1]+t*t*t*p3[1]];
+}
+function buildStemInto(arr,base,p0,p1,p2,p3,n,birth0,R){
+  let i=base;
+  for(let k=0;k<n;k++){
+    const t=k/(n-1);
+    const[px,py]=cubic(p0,p1,p2,p3,t);
+    const c=mixc([30,96,52],[88,168,102],t);
+    /* 靠近花头粗、近汇聚点收窄的锥形茎；1/3 粒子做高光棱线 */
+    const taper=0.45+0.55*Math.min(1,t/0.85+0.15);
+    const hi=R()<0.30;
+    const cc=hi?mixc(c,[124,198,134],0.42):c;
+    /* 末段渐隐：茎没入束口缎带内被包裹，不再糊成亮绿柱压过缎带 */
+    const u=Math.max(0,Math.min(1,(t-0.52)/0.23)), fade=1-0.92*u*u*(3-2*u);
+    emit(arr,i,px+(R()-.5)*.052*taper,py+(R()-.5)*.042*taper,(R()-.5)*.05,
+      cc[0],cc[1],cc[2],(hi?2.0:3.0)+R()*1.8,(hi?0.62:0.40+R()*0.30)*fade,birth0+t*1.05,0,R()*TAU,0,0);
+    i++;
+  }
+  return i;
+}
+
+function buildLeafInto(arr,base,ox,oy,oz,dx,dy,dz,len,birth0,R,n){
+  let i=base;
+  const dl=Math.hypot(dx,dy,dz),ux=dx/dl,uy=dy/dl,uz=dz/dl;
+  const ax=-uz,az=ux;               /* 横向 = 上 × 叶方向 */
+  for(let k=0;k<n;k++){
+    const s=R(),q=R()*2-1;
+    const w=0.13*Math.pow(Math.sin(Math.PI*s),0.85);
+    const x=ox+ux*len*s+ax*w*q;
+    const y=oy+uy*len*s-0.20*s*s+q*0.03;
+    const z=oz+uz*len*s+az*w*q;
+    let c=mixc([24,84,44],[74,156,90],0.25+0.55*R());
+    if(Math.abs(q)<0.16)c=mixc(c,[18,64,34],0.45);          /* 中脉主筋 */
+    else if(Math.abs(q)>0.78)c=mixc(c,[138,212,150],0.48);  /* 锯齿亮缘 */
+    emit(arr,i,x,y,z,c[0],c[1],c[2],1.8+R()*1.8,0.48+R()*0.4,birth0+s*0.4+R()*0.1,0,R()*TAU,0,0);
+    i++;
+  }
+  return i;
+}
+
+/* 花萼：5 片萼片托在每朵花盘底部（位置/缩放参数化） */
+function buildSepalsInto(arr,base,cx,cy,cz,scale,birth0,R){
+  let i=base;
+  for(let j=0;j<5;j++){
+    const phi=j*TAU/5+0.35, rj=0.9+R()*0.2;
+    for(let iu=0;iu<=U_SEP;iu++){
+      const u=iu/U_SEP, th=1.90+u*0.55;
+      for(let iv=0;iv<V_SEP;iv++){
+        const v=-1+2*iv/(V_SEP-1);
+        const W=0.07*Math.sin(Math.PI*u)*scale;
+        const r=(0.10+Math.sin(th)*0.42*u)*rj*scale;
+        const x=cx+Math.cos(phi)*r-Math.sin(phi)*v*W;
+        const z=cz+Math.sin(phi)*r+Math.cos(phi)*v*W;
+        const y=cy+(0.02+Math.cos(th)*0.42*u)*scale;
+        const c=mixc([30,92,48],[64,140,80],u*0.75+R()*0.25);
+        emit(arr,i,x,y,z,c[0],c[1],c[2],(1.5+R()*1.5)*Math.sqrt(scale),0.45+R()*0.4,birth0+0.20+u*0.30+R()*0.10,0,R()*TAU,0,0);
+        i++;
+      }
+    }
+  }
+  return i;
+}
+
+/* 花店包装：奶白纸锥（朝镜头面 + 顶缘受光 + 前中柔褶 + 内唇暗线）
+   + 深红缎带绕束 + 蝴蝶结（双环 + 结心 + 双尾）
+   加法混合没有遮挡：纸锥只画朝镜头的 ~60% 弧面，茎在纸内段已另行减光 */
+function buildWrapInto(arr,base,n,nPaper,birth0,R){
+  let i=base;
+  /* ---- 纸锥 ---- */
+  const yT=-0.92,yB=-1.48,rT=0.50,rB=0.20;
+  const OUT=[234,224,208],HI=[251,247,240],SH=[172,156,140],RIM=[253,250,243],LIP=[128,114,100];
+  const nRim=Math.floor(nPaper*0.05),nLip=Math.floor(nPaper*0.04),nBody=nPaper-nRim-nLip;
+  for(let k=0;k<nBody;k++){
+    const h=Math.pow(R(),0.9), a=-Math.PI/2+(R()*2-1)*1.02;
+    const y=yT+(yB-yT)*h, r=(rT+(rB-rT)*h)*(1+(R()-.5)*0.05);
+    const x=Math.cos(a)*r, z=Math.sin(a)*r*0.82;
+    const lit=0.5-0.5*Math.sin(a);                     /* 朝镜头最亮 */
+    let c=mixc(mixc(OUT,SH,0.62-0.62*lit),HI,lit*0.42);
+    if(Math.abs(a+Math.PI/2)<0.10)c=mixc(c,SH,0.20);   /* 前中一道柔褶 */
+    else if(Math.abs(a+Math.PI/2-0.62)<0.10)c=mixc(c,SH,0.14);  /* 侧褶：纸锥不止一条褶 */
+    if(Math.abs(a+Math.PI/2+1.05)<0.09)c=mixc(c,HI,0.16);       /* 斜向受光折痕：纸的挺度 */
+    if(h>0.92)c=mixc(c,SH,0.30);                       /* 底部微沉 */
+    emit(arr,i,x,y,z,c[0],c[1],c[2],3.0+R()*1.7,0.46+R()*0.18+lit*0.14,birth0+R()*0.5,0,R()*TAU,0,0);
+    i++;
+  }
+  for(let k=0;k<nRim;k++){                             /* 顶缘纸口：一圈受光 */
+    const a=R()*TAU, r=rT*(0.99+(R()-.5)*0.03);
+    const lit=Math.max(0.25,0.5-0.5*Math.sin(a));
+    const c=mixc(RIM,SH,0.45-0.45*lit);
+    emit(arr,i,Math.cos(a)*r,yT-0.006+(R()-.5)*0.012,Math.sin(a)*r*0.82,
+      c[0],c[1],c[2],2.7+R()*1.5,0.62+R()*0.22,birth0+R()*0.5,0,R()*TAU,0,0);
+    i++;
+  }
+  for(let k=0;k<nLip;k++){                             /* 内唇：纸口厚度的暗线 */
+    const a=R()*TAU, r=rT*0.93;
+    const c=mixc(LIP,[70,60,50],R()*0.5);
+    emit(arr,i,Math.cos(a)*r,yT+0.035+(R()-.5)*0.02,Math.sin(a)*r*0.74,
+      c[0],c[1],c[2],2.2+R()*1.2,0.26+R()*0.12,birth0+R()*0.5,0,R()*TAU,0,0);
+    i++;
+  }
+  /* ---- 缎带绕束（前向弧，叠在纸上） ---- */
+  const RIB=[176,34,60],RHI=[240,132,160],RDK=[104,16,40];
+  const yb0=-1.06,yb1=-1.22;
+  const nKnot=Math.floor(n*0.10),nLoop=2*Math.floor(n*0.10),nTail=2*Math.floor(n*0.09),
+        nBand=n-nKnot-nLoop-nTail;
+  for(let k=0;k<nBand;k++){
+    const h=R(), a=-Math.PI/2+(R()*2-1)*1.18;
+    const y=yb0+(yb1-yb0)*h;
+    const rc=(rT+(rB-rT)*((y-yT)/(yB-yT)))*1.045;
+    const x=Math.cos(a)*rc, z=Math.sin(a)*rc*0.82;
+    const lit=0.5-0.5*Math.sin(a);
+    const c=mixc(mixc(RIB,RDK,0.30-0.30*lit),RHI,lit*0.30);
+    emit(arr,i,x,y,z,c[0],c[1],c[2],2.3+R()*1.3,0.46+R()*0.18+lit*0.12,birth0+0.15+R()*0.4,0,R()*TAU,0,0);
+    i++;
+  }
+  /* 蝴蝶结：双环 + 结心（浮在纸前） */
+  const bx=0,by=-1.14,bz=-0.47;
+  for(let side=0;side<2;side++){
+    const sg=side?1:-1, nl=nLoop/2;
+    for(let k=0;k<nl;k++){
+      const th=R()*TAU;
+      const ex=Math.cos(th)*0.082, ey=Math.sin(th)*0.052;
+      const ca=Math.cos(sg*0.42), sa=Math.sin(sg*0.42);
+      const x=sg*0.056+ex*ca-ey*sa, y=by+ex*sa+ey*ca, z=bz+0.028*Math.cos(th);
+      const c=Math.abs(Math.sin(th))>0.62?mixc(RIB,RHI,0.55):mixc(RIB,RDK,0.18);
+      emit(arr,i,x,y,z,c[0],c[1],c[2],2.0+R()*1.2,0.55+R()*0.22,birth0+0.30+R()*0.3,0,R()*TAU,0,0);
+      i++;
+    }
+  }
+  for(let k=0;k<nKnot;k++){
+    const a=R()*TAU,u=R()*2-1,rr=Math.sqrt(1-u*u)*0.030;
+    const c=mixc(RIB,RHI,0.40+R()*0.35);
+    emit(arr,i,bx+Math.cos(a)*rr,by+u*0.026,bz-0.012+Math.sin(a)*rr*0.7,
+      c[0],c[1],c[2],1.9+R()*1.2,0.72+R()*0.22,birth0+0.30+R()*0.25,0,R()*TAU,0,0);
+    i++;
+  }
+  /* 双尾：自结心垂落纸面，末梢渐隐 */
+  for(let side=0;side<2;side++){
+    const sg=side?1:-1, nt=nTail/2;
+    for(let k=0;k<nt;k++){
+      const t=R();
+      const w=(0.030-0.016*t)*(0.9+R()*0.2),q=R()*2-1;
+      const x=sg*(0.030+0.10*t+0.03*Math.sin(t*4.2+0.4))+q*w;
+      const y=by-0.045-0.34*t-0.02*Math.sin(t*3.0);
+      const z=bz+0.055-0.06*t+q*w*0.4;
+      const c=mixc(mixc(RIB,RDK,0.10+0.50*t),RHI,(1-t)*0.28);
+      emit(arr,i,x,y,z,c[0],c[1],c[2],1.8+R()*1.1+t*0.7,0.56+R()*0.20-0.22*t,birth0+0.35+t*0.20+R()*0.12,0,R()*TAU,0,0);
+      i++;
+    }
+  }
+  return i;
+}
+
+/* 满天星：花店花束的呼吸感——细白星点散在穹顶隙间与冠缘高处，细绿花茎隐约可循 */
+function buildGypInto(arr,base,n,birth0,R){
+  let i=base;
+  const AT=[[-0.55,0.46,-0.28],[0.55,0.42,-0.30],[-0.20,0.58,0.10],[0.22,0.55,0.25],
+    [0.02,0.30,0.78],[-0.80,-0.06,-0.30],[0.82,-0.02,-0.32],[-0.42,-0.32,-0.55],[0.44,-0.28,-0.55],[0.10,-0.44,-0.42]];
+  const per=Math.floor(n/AT.length),rem=n-per*AT.length;
+  for(let c=0;c<AT.length;c++){
+    const cnt=c<rem?per+1:per, gx=AT[c][0],gy=AT[c][1],gz=AT[c][2];
+    const nDot=Math.floor(cnt*0.78);
+    for(let k=0;k<nDot;k++){
+      const a=R()*TAU,rr=Math.pow(R(),0.6)*0.058;
+      const bl=R()<0.22;
+      const cc=bl?[255,226,234]:[250,247,253];
+      emit(arr,i,gx+Math.cos(a)*rr,gy+(R()*2-1)*0.052,gz+Math.sin(a)*rr*0.8,
+        cc[0],cc[1],cc[2],1.0+R()*0.8,0.88+R()*0.30,birth0+R()*1.2,1.8+R()*3.0,R()*TAU,0,0);
+      i++;
+    }
+    for(let k=nDot;k<cnt;k++){
+      const t=(k-nDot)/Math.max(1,cnt-nDot-1);
+      const cc=mixc([96,132,84],[150,186,128],R());
+      emit(arr,i,gx*(1-t*0.25)+(R()-.5)*.02,gy-0.05-0.20*t,gz*(1-t*0.25)+(R()-.5)*.02,
+        cc[0],cc[1],cc[2],1.0+R()*0.6,0.22+R()*0.14,birth0+0.2+t*0.4+R()*0.2,0,R()*TAU,0,0);
+      i++;
+    }
+  }
+  return i;
+}
+
+/* 香槟波凯：花店摄影背景的虚化光斑——纵深与棚拍质感。
+   远处大而柔（DOF 会把远处粒子放软放大，天然成为波凯圆） */
+function buildBokehInto(arr,base,n,birth0,R){
+  let i=base;
+  const COLS=[[255,196,150],[255,170,190],[255,214,170],[236,180,255],[255,232,204]];
+  for(let k=0;k<n;k++){
+    const x=(R()*2-1)*1.55, y=-0.55+R()*1.9, z=-1.30-R()*0.75;
+    const c=COLS[(R()*COLS.length)|0], big=R()<0.30;
+    emit(arr,i,x,y,z,c[0],c[1],c[2],
+      big?6.5+R()*6.5:3.4+R()*3.2,(big?0.05:0.08)+R()*0.05,
+      birth0+R()*2.6,R()<0.5?0.5+R()*1.1:0,R()*TAU,1,0);
+    i++;
+  }
+  return i;
+}
+
+/* 晨露与结饰碎钻：花头穹顶缀几滴会眨的露珠，缎带结上洒一把碎钻光——精品花束的收尾笔触 */
+function buildSparkInto(arr,base,n,birth0,R){
+  let i=base;
+  const nBow=Math.floor(n*0.10);
+  for(let k=0;k<nBow;k++){                     /* 结饰碎钻 */
+    const th=R()*TAU,rr=Math.pow(R(),0.5)*0.13;
+    emit(arr,i,Math.cos(th)*rr*1.4,-1.14+Math.sin(th)*rr*0.6,-0.46+Math.cos(th)*rr*0.5,
+      255,238,246,0.8+R()*0.9,0.85+R()*0.5,birth0+R()*2.2,3+R()*4,R()*TAU,0,0);
+    i++;
+  }
+  for(let k=nBow;k<n;k++){                     /* 穹顶晨露 */
+    const a=R()*TAU, rr=0.30+Math.pow(R(),0.7)*0.60;
+    const x=Math.cos(a)*rr, z=Math.sin(a)*rr*0.8;
+    const y=0.12+(1-rr*rr*0.55)*(0.12+R()*0.30)+(R()-.5)*0.08;
+    const cool=R()<0.35;
+    emit(arr,i,x,y,z,cool?216:255,cool?236:244,cool?255:248,
+      0.7+R()*0.8,0.75+R()*0.55,birth0+R()*3.2,2.5+R()*4.5,R()*TAU,0,0);
+    i++;
+  }
+  return i;
+}
+
+function buildAll(){
+  const R=mulberry32(seed);
+  const total=ROSES.reduce((a,r)=>a+r.K*((r.U+1)*r.V+r.E)+5*(U_SEP+1)*V_SEP+N_STEM+(r.op>0.55?N_HEART:0),0)
+            +(GL_OK?6:4)*N_LEAF+N_PAPER+N_WRAP+N_GYP+2*N_ORB+N_DUST+N_BOKEH+N_DEW;
+  dataArr=new Float32Array(total*STRIDE);
+  let i=0;
+
+  /* ---- 花束：每朵花 = 萼片 + 茎 + 花盘 + 花芯辉光 ---- */
+  ROSES.forEach((r,ri)=>{
+    /* 花茎：螺旋汇聚进包装纸内（纸内段另行减光——加法混合没有遮挡） */
+    const p0=[r.x*(r.s<0.5?1.35:0.92),r.y-0.26*r.s], p3=[0,-1.72];
+    const p1=[r.x*1.25,(r.y-0.26*r.s+p3[1])*0.42], p2=[r.x*0.5,(p0[1]+p3[1])*0.62];
+    i=buildStemInto(dataArr,i,p0,p1,p2,p3,N_STEM,r.b+0.25,R);
+    /* 萼片：越闭的花萼片越显——花蕾靠绿色花萼读形 */
+    i=buildSepalsInto(dataArr,i,r.x,r.y,r.z,r.s*(1+(1-r.op)*0.55),r.b,R);
+    /* 花盘（每朵染自己的色调；op=最终开放度） */
+    i=buildRoseInto(dataArr,i,r.x,r.y,r.z,r.s,r.b,r.K,R,r.U,r.V,r.E,r.tc,r.tk,r.op,ri);
+    /* 花芯辉光（克制，随朵染色；花蕾无芯可露，也被更高花头遮去几分） */
+    if(r.op>0.55){
+      const hc=mixc([255,205,222],r.tc,0.30);
+      for(let k=0;k<N_HEART;k++){
+        const a=R()*TAU,rr=Math.pow(R(),.6)*0.045*r.s;
+        emit(dataArr,i,r.x+Math.cos(a)*rr,r.y+(0.15+R()*0.05)*r.s,r.z+Math.sin(a)*rr,
+          Math.round(hc[0]),Math.round(hc[1]),Math.round(hc[2]),(1.1+R()*1.3)*Math.sqrt(r.s),(0.30+R()*.22)*domeDim(r.x,r.y+0.15*r.s,r.z,ri),r.b+0.60+R()*0.7,1.2+R()*2,R()*TAU,0,0);
+        i++;
+      }
+    }
+  });
+
+  /* 叶片：穹顶基座的领口环——衬在花头与包装纸之间 */
+  const LEAVES=[
+    [-0.72,-0.28,-0.30,-0.97,-0.42,-0.35,0.52],
+    [ 0.72,-0.28,-0.30, 0.97,-0.42,-0.35,0.52],
+    [-0.50,-0.42, 0.52,-0.72,-0.62, 0.68,0.46],
+    [ 0.50,-0.42, 0.52, 0.72,-0.62, 0.68,0.46],
+    [ 0.05,-0.50, 0.10, 0.10,-0.78, 0.18,0.42],
+    [-0.34,-0.20,-0.55,-0.52,-0.34,-0.78,0.40],
+  ];
+  LEAVES.slice(0,GL_OK?6:4).forEach((L,li)=>{
+    i=buildLeafInto(dataArr,i,L[0],L[1],L[2],L[3],L[4],L[5],L[6],1.4+li*0.35,R,N_LEAF);
+  });
+  /* 花店包装（奶白纸锥 + 缎带蝴蝶结） + 满天星：绽放到一半时"包装成束" */
+  i=buildWrapInto(dataArr,i,N_WRAP,N_PAPER,2.05,R);
+  i=buildGypInto(dataArr,i,N_GYP,2.2,R);
+  i=buildBokehInto(dataArr,i,N_BOKEH,1.2,R);
+  i=buildSparkInto(dataArr,i,N_DEW,8.6,R);
+  /* 两颗漂浮的光球 */
+  const orbs=[[-1.10,.78,.35,.05],[ 1.12,.88,-.30,.045]];
+  orbs.forEach((o,k)=>{
+    for(let q=0;q<N_ORB;q++){
+      const th=R()*TAU,ph=Math.acos(2*R()-1),rr=o[3]*Math.cbrt(R());
+      emit(dataArr,i,o[0]+rr*Math.sin(ph)*Math.cos(th),o[1]+rr*Math.cos(ph),o[2]+rr*Math.sin(ph)*Math.sin(th),
+        255,214,232,1.1+R()*1.5,.5+R()*.7,5.1+k*.55+R()*.5,2+R()*3,R()*TAU,1,0);
+      i++;
+    }
+  });
+  /* 星尘（约 1/3 缓慢下沉） */
+  for(let k=0;k<N_DUST;k++){
+    const th=R()*TAU,ph=Math.acos(2*R()-1),d=0.72+1.15*Math.pow(R(),.65);
+    let x=Math.sin(ph)*Math.cos(th)*d,y=Math.cos(ph)*d*0.85-0.08,z=Math.sin(ph)*Math.sin(th)*d*0.8;
+    if(y<-1.15)y=-1.15+R()*0.2;
+    const white=R()<.68;
+    emit(dataArr,i,x,y,z,255,white?246:206,white?252:228,
+      0.9+R()*1.5,0.32+R()*.55,1.6+R()*9.2,1.5+R()*4,R()*TAU,0,(R()<.35?.02+.05*R():0));
+    i++;
+  }
+
+  PARTS=i;
+  if(GL_OK){
+    gl.bindBuffer(gl.ARRAY_BUFFER,bufStatic);
+    gl.bufferData(gl.ARRAY_BUFFER,dataArr,gl.DYNAMIC_DRAW);
+  }
+  const births=new Float32Array(PARTS);
+  for(let k=0;k<PARTS;k++)births[k]=dataArr[k*STRIDE+8];
+  births.sort();
+  sortedBirths=births;
+
+  /* 飘落花瓣 */
+  fallers.length=0;
+  const FR=mulberry32(seed^0x9e37);
+  for(let k=0;k<N_FALL;k++){
+    fallers.push({x:(FR()-.5)*3.0,y:1.05+FR()*1.6,z:(FR()-.5)*1.6,
+      ph:FR()*TAU,spd:.14+FR()*.20,amp:.10+FR()*.16,rot:FR()*TAU,
+      s:2.1+FR()*2.3,b:.5+FR()*.4,birth:7+FR()*7,
+      c:PASTELS[(FR()*PASTELS.length)|0]});
+  }
+  burst.length=0;
+  buildConsole(seed,PARTS);
+}
+
+/* ---------- 画布尺寸 ---------- */
+let W=0,H=0,S=0,OX=0,OY=0,DPR=1;
+function resize(){
+  const r=cv.getBoundingClientRect();
+  DPR=Math.min(window.devicePixelRatio||1,GL_OK?2:1.5);
+  W=Math.round(r.width*DPR);H=Math.round(r.height*DPR);
+  if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H}
+  S=Math.min(W/3.15,H/3.05);OX=W*0.5;OY=H*0.46;  /* 穹顶花束：宽 ±1.31 高 +0.72/−1.75，收紧取景让花束占满画面 */
+}
+new ResizeObserver(resize).observe(document.getElementById('stage'));
+resize();
+
+/* ---------- 相机 / HUD ---------- */
+let mx=0,my=0,tmx=0,tmy=0;
+addEventListener('pointermove',e=>{
+  tmx=(e.clientX/innerWidth-0.5)*2;tmy=(e.clientY/innerHeight-0.5)*2;
+});
+let t=0,last=performance.now(),hudNext=0,ema=16,skip=1,done=false,doneAt=0;
+
+const genPct=document.getElementById('genPct'),genFill=document.getElementById('genFill'),
+      genLabel=document.getElementById('genLabel'),pcount=document.getElementById('pcount'),
+      fpsv=document.getElementById('fpsv'),codeWrap=document.getElementById('codeWrap'),
+      lncol=document.getElementById('lncol'),conLines=document.getElementById('conLines'),
+      words=document.querySelector('#dedication .words');
+
+function bornCount(tt){
+  if(!sortedBirths)return 0;
+  let lo=0,hi=sortedBirths.length;
+  while(lo<hi){const m=(lo+hi)>>1;if(sortedBirths[m]<=tt)lo=m+1;else hi=m}
+  return lo;
+}
+/* 与顶点着色器一致的投影（CPU 侧，用于辉光/网格定位；矩阵为列主序，与 uniformMatrix3fv 一致） */
+function project(x,y,z,M){
+  const vx=M[0]*x+M[3]*y+M[6]*z,
+        vy=M[1]*x+M[4]*y+M[7]*z,
+        vz=M[2]*x+M[5]*y+M[8]*z;
+  const pe=FOV/(FOV+vz);
+  return[OX+vx*S*pe,OY-vy*S*pe,pe,vz];
+}
+
+/* ---------- 主循环 ---------- */
+let rec=null,recT0=0,recChunks=[];
+const recbtn=document.getElementById('recbtn');
+
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;t+=dt;
+  ema=ema*0.95+(dt*1000)*0.05;
+  if(!GL_OK){
+    if(ema>27&&skip<3)skip++;else if(ema<17&&skip>1)skip--;
+  }
+  mx+=(tmx-mx)*0.04;my+=(tmy-my)*0.04;
+
+  const rotY=Math.sin(t*0.31)*0.22+mx*0.30, tilt=0.99+my*0.16+0.02*Math.sin(t*0.4); /* 轻曳 ±12.6° + 鼠标视差（不整圈旋转，花束始终正对） */
+  const cy_=Math.cos(rotY),sy_=Math.sin(rotY),ct=Math.cos(tilt),st=Math.sin(tilt);
+  const breath=1+0.055*Math.sin(t*1.25);
+  const sway=0.013*Math.sin(t*0.6);
+  const flash=done?Math.exp(-(t-doneAt)*1.8):0;
+  /* 焦平面钉在冠花 (0,0.38,0.10) 的视线深度 vz=0.38·st+0.10·ct·cy_，再前移 0.10：
+     冠花锐利、双蕾浮前清晰、后环带渐虚、包装丝绒化 */
+  const focus=0.38*st+0.10*ct*cy_-0.10;
+
+  /* 更新飘瓣/光爆（两引擎共用状态） */
+  for(let k=0;k<fallers.length;k++){
+    const f=fallers[k];
+    if(t<f.birth)continue;
+    f.y-=f.spd*dt;
+    if(f.y<-1.62){f.y=1.15+Math.random()*.5;f.x=(Math.random()-.5)*2.2;f.birth=t+Math.random()*2}
+  }
+  for(let k=burst.length-1;k>=0;k--){
+    const b=burst[k];
+    b.life-=b.decay*dt;
+    if(b.life<=0){burst.splice(k,1);continue}
+    b.x+=b.vx*dt;b.y+=b.vy*dt;b.z+=b.vz*dt;b.vy-=0.25*dt;
+  }
+
+  if(GL_OK){
+    /* ============ WebGL 渲染 ============ */
+    const M=new Float32Array([cy_,-st*sy_,ct*sy_, 0,ct,st, -sy_,-st*cy_,ct*cy_]);
+    gl.viewport(0,0,W,H);
+    gl.disable(gl.BLEND);
+    gl.clearColor(0.012,0.012,0.016,1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.enable(gl.BLEND);
+
+    /* 大气背景：底部酒红 + 香槟暖光 + 顶部冷调 + 花后玫瑰光环 */
+    drawGlow(OX,OY+S*0.62,S*1.5,0.30,0.045,0.115,0.40,true,false);
+    drawGlow(OX,OY+S*0.52,S*1.30,0.55,0.34,0.14,0.16,true,false);
+    drawGlow(OX,-S*0.34,S*1.25,0.05,0.035,0.09,0.30,true,false);
+    drawGlow(OX,OY-S*0.10,S*1.15,1,0.30,0.44,0.07*breath,true,false);
+
+    /* 地面网格 */
+    gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+    gl.useProgram(progFlat);
+    const gv=[];
+    for(let gx=-3;gx<=3.001;gx+=0.5){
+      const a=project(gx,-1.52,-3,M),b=project(gx,-1.52,3,M);
+      gv.push(a[0]/W*2-1,1-a[1]/H*2,b[0]/W*2-1,1-b[1]/H*2);
+    }
+    for(let gz=-3;gz<=3.001;gz+=0.75){
+      const a=project(-3,-1.52,gz,M),b=project(3,-1.52,gz,M);
+      gv.push(a[0]/W*2-1,1-a[1]/H*2,b[0]/W*2-1,1-b[1]/H*2);
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER,bufLine);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(gv),gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(LF.aXY);
+    gl.vertexAttribPointer(LF.aXY,2,gl.FLOAT,false,0,0);
+    gl.uniform4f(LF.uColor,1,0.52,0.65,0.05);
+    gl.drawArrays(gl.LINES,0,gv.length/2);
+
+    /* 花心辉光（加法混合，顺序无关）：主花大光核 + 各侧花随色微光核 */
+    const g0=project(0,0.38,0.10,M);
+    drawGlow(g0[0],g0[1],S*0.50*breath*(1+0.9*flash),1,0.30,0.44,(0.15+0.22*flash)*breath,true,false);
+    ROSES.forEach((r,ri)=>{
+      if(ri===0||r.op<0.6)return;
+      const gq=project(r.x,r.y+0.10*r.s,r.z,M);
+      drawGlow(gq[0],gq[1],S*0.34*r.s*gq[2]*breath*(1+0.9*flash),
+        r.tc[0]/255,r.tc[1]/255,r.tc[2]/255,(0.09+0.12*flash)*breath,true,false);
+    });
+
+    /* 动态粒子（飘瓣+光爆） */
+    let dynCount=0;
+    for(let k=0;k<fallers.length;k++){
+      const f=fallers[k];
+      if(t<f.birth)continue;
+      const fx=f.x+Math.sin(t*1.1+f.ph)*f.amp;
+      const fade=Math.min(1,(f.y+1.62)/.3)*Math.min(1,(1.7-f.y)/.25+.3);
+      emit(dynArr,dynCount,fx,f.y,f.z,f.c[0],f.c[1],f.c[2],f.s*(1+.2*Math.sin(t*2+f.rot)),f.b*fade,0,0,f.rot,0,0);
+      dynCount++;
+    }
+    for(let k=0;k<burst.length;k++){
+      const b=burst[k];
+      emit(dynArr,dynCount,b.x,b.y,b.z,255,220,238,b.s,Math.min(1,b.life),b.birth,0,b.ph,0,0);
+      dynCount++;
+    }
+    if(dynCount>0){
+      gl.bindBuffer(gl.ARRAY_BUFFER,bufDyn);
+      gl.bufferData(gl.ARRAY_BUFFER,dynArr.subarray(0,dynCount*STRIDE),gl.DYNAMIC_DRAW);
+    }
+
+    /* 粒子主通道 */
+    gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+    gl.useProgram(progPts);
+    gl.uniformMatrix3fv(L.uRot,false,M);
+    gl.uniform2f(L.uCenter,OX,OY);
+    gl.uniform2f(L.uRes,W,H);
+    gl.uniform1f(L.uScale,S);
+    gl.uniform1f(L.uTime,t);
+    gl.uniform1f(L.uBreath,breath);
+    gl.uniform1f(L.uSway,sway);
+    gl.uniform1f(L.uFocus,focus);
+    gl.uniform1f(L.uDOF,0.95);
+    gl.uniform1f(L.uMaxSize,MAX_PT);
+    gl.bindBuffer(gl.ARRAY_BUFFER,bufStatic);
+    bindPtsAttrs();
+    gl.drawArrays(gl.POINTS,0,PARTS);
+    if(dynCount>0){
+      gl.bindBuffer(gl.ARRAY_BUFFER,bufDyn);
+      bindPtsAttrs();
+      gl.drawArrays(gl.POINTS,0,dynCount);
+    }
+
+    /* 暗角 */
+    drawGlow(W/2,H/2,Math.max(W,H)*0.62,0,0,0,0.5,false,true);
+  }else{
+    /* ============ Canvas2D 渲染（降级） ============ */
+    ctx2d.setTransform(1,0,0,1,0,0);
+    ctx2d.globalCompositeOperation='source-over';
+    ctx2d.globalAlpha=1;
+    ctx2d.fillStyle='#030304';
+    ctx2d.fillRect(0,0,W,H);
+    let bg=ctx2d.createRadialGradient(OX,OY+S*0.55,0,OX,OY+S*0.55,S*1.5);
+    bg.addColorStop(0,'rgba(77,12,30,.42)');bg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx2d.fillStyle=bg;ctx2d.fillRect(0,0,W,H);
+    let cg=ctx2d.createRadialGradient(OX,OY+S*0.48,0,OX,OY+S*0.48,S*1.3);   /* 香槟暖光 */
+    cg.addColorStop(0,'rgba(255,172,96,.11)');cg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx2d.fillStyle=cg;ctx2d.fillRect(0,0,W,H);
+    let tg=ctx2d.createRadialGradient(OX,-S*0.3,0,OX,-S*0.3,S*1.25);
+    tg.addColorStop(0,'rgba(13,9,23,.30)');tg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx2d.fillStyle=tg;ctx2d.fillRect(0,0,W,H);
+
+    /* 地面网格 */
+    ctx2d.strokeStyle='rgba(255,133,164,.05)';ctx2d.lineWidth=1;ctx2d.beginPath();
+    for(let gx=-3;gx<=3.001;gx+=0.5){
+      const X1=gx*cy_+3*sy_,Z1=-gx*sy_+3*cy_,Y1=-1.52*ct-Z1*st,Z2a=-1.52*st+Z1*ct;
+      const pe1=FOV/(FOV+Z2a);
+      const X2=gx*cy_-3*sy_,Z2=-gx*sy_-3*cy_,Y2=-1.52*ct-Z2*st,Z2b=-1.52*st+Z2*ct;
+      const pe2=FOV/(FOV+Z2b);
+      ctx2d.moveTo(OX+X1*S*pe1,OY-Y1*S*pe1);
+      ctx2d.lineTo(OX+X2*S*pe2,OY-Y2*S*pe2);
+    }
+    for(let gz=-3;gz<=3.001;gz+=0.75){
+      const X1=-3*cy_+gz*sy_,Z1=3*sy_+gz*cy_,Y1=-1.52*ct-Z1*st,Z2a=-1.52*st+Z1*ct;
+      const pe1=FOV/(FOV+Z2a);
+      const X2=3*cy_+gz*sy_,Z2=-3*sy_+gz*cy_,Y2=-1.52*ct-Z2*st,Z2b=-1.52*st+Z2*ct;
+      const pe2=FOV/(FOV+Z2b);
+      ctx2d.moveTo(OX+X1*S*pe1,OY-Y1*S*pe1);
+      ctx2d.lineTo(OX+X2*S*pe2,OY-Y2*S*pe2);
+    }
+    ctx2d.stroke();
+
+    /* 辉光层（加法） */
+    ctx2d.globalCompositeOperation='lighter';
+    const glowAt=(wx,wy,wz,rad,rgba)=>{
+      const vx=wx*cy_-wz*sy_,vy=wy,wz2=wx*sy_+wz*cy_;
+      const Y=vy*ct-wz2*st,Z2=vy*st+wz2*ct,pe=FOV/(FOV+Z2);
+      const px=OX+vx*S*pe,py=OY-Y*S*pe;
+      const g=ctx2d.createRadialGradient(px,py,0,px,py,rad);
+      g.addColorStop(0,rgba[0]);g.addColorStop(.4,rgba[1]);g.addColorStop(1,'rgba(255,120,175,0)');
+      ctx2d.fillStyle=g;ctx2d.fillRect(px-rad,py-rad,rad*2,rad*2);
+    };
+    glowAt(0,-.55,.05,S*1.05,[`rgba(255,92,128,${.11*breath})`,`rgba(255,92,128,${.05*breath})`]);
+    glowAt(0,.38,.10,S*0.50*breath*(1+0.9*flash),
+      [`rgba(255,118,152,${(0.15+0.22*flash)*breath})`,`rgba(255,86,124,${(0.09+0.13*flash)*breath})`]);
+    ROSES.forEach((r,ri)=>{
+      if(ri===0||r.op<0.6)return;
+      const rh=r.tc[0]|0,rg=r.tc[1]|0,rb=r.tc[2]|0;
+      glowAt(r.x,r.y+0.10*r.s,r.z,S*0.34*r.s*breath*(1+0.9*flash),
+        [`rgba(${rh},${rg},${rb},${(0.10+0.12*flash)*breath})`,
+         `rgba(${rh},${rg},${rb},${(0.06+0.07*flash)*breath})`]);
+    });
+
+    /* 粒子（与顶点着色器一致的数学） */
+    for(let i=0;i<PARTS;i++){
+      const o=i*STRIDE;
+      const birth=dataArr[o+8];
+      if(t<birth)continue;
+      if(skip>1&&(i%skip))continue;
+      const pop=Math.min(1,(t-birth)/0.6);
+      const u2=pop-1,popE=1+2.7*u2*u2*u2+1.7*u2*u2;
+      let x=dataArr[o],y=dataArr[o+1],z=dataArr[o+2];
+      const ph=dataArr[o+10],flag=dataArr[o+11],dr=dataArr[o+12];
+      /* 盛开动画（与顶点着色器一致） */
+      if(flag>0.02&&flag<0.5){
+        const f=(flag-0.06)*2.5;
+        const[ox,oy,oz]=openTransform([x,y,z],f,birth,t);
+        x=ox;y=oy;z=oz;
+      }
+      if(dr>0){
+        const yy=y-t*dr+1.35+2.5;
+        y=((yy%2.5)+2.5)%2.5-1.35;
+      }
+      x+=sway*(y+1.05);
+      if(flag>0.5)y+=0.045*Math.sin(t*0.8+ph);
+      const X=x*cy_-z*sy_,Z=x*sy_+z*cy_;
+      const Y=y*ct-Z*st,Z2=y*st+Z*ct;
+      const pe=FOV/(FOV+Z2);
+      const sx=OX+X*S*pe,syp=OY-Y*S*pe;
+      if(sx<-30||sx>W+30||syp<-30||syp>H+30)continue;
+      const twf=dataArr[o+9]>0?0.72+0.38*Math.sin(t*dataArr[o+9]+ph):1;
+      const sz=dataArr[o+6]*pe*breath*popE;
+      ctx2d.globalAlpha=Math.min(1,dataArr[o+7]*popE*twf*(0.6+0.4*pe));
+      const sp=sprite(Math.round(dataArr[o+3]*255),Math.round(dataArr[o+4]*255),Math.round(dataArr[o+5]*255));
+      ctx2d.drawImage(sp,sx-sz,syp-sz,sz*2,sz*2);
+    }
+    /* 飘瓣（各染粉彩） + 光爆 */
+    for(let k=0;k<fallers.length;k++){
+      const f=fallers[k];
+      if(t<f.birth)continue;
+      const fx=f.x+Math.sin(t*1.1+f.ph)*f.amp;
+      const X=fx*cy_-f.z*sy_,Z=fx*sy_+f.z*cy_;
+      const Y=f.y*ct-Z*st,Z2=f.y*st+Z*ct;
+      const pe=FOV/(FOV+Z2);
+      const sx=OX+X*S*pe,syp=OY-Y*S*pe;
+      if(sx<-20||sx>W+20||syp<-20||syp>H+20)continue;
+      const fade=Math.min(1,(f.y+1.62)/.3)*Math.min(1,(1.7-f.y)/.25+.3);
+      const sz=f.s*pe*(1+.2*Math.sin(t*2+f.rot));
+      ctx2d.globalAlpha=Math.min(1,f.b*fade);
+      ctx2d.drawImage(sprite(f.c[0],f.c[1],f.c[2]),sx-sz,syp-sz,sz*2,sz*2);
+    }
+    const spBurst=sprite(255,220,238);
+    for(let k=0;k<burst.length;k++){
+      const b=burst[k];
+      const X=b.x*cy_-b.z*sy_,Z=b.x*sy_+b.z*cy_;
+      const Y=b.y*ct-Z*st,Z2=b.y*st+Z*ct;
+      const pe=FOV/(FOV+Z2);
+      const sx=OX+X*S*pe,syp=OY-Y*S*pe;
+      const sz=b.s*pe*(1.6-b.life);
+      ctx2d.globalAlpha=Math.min(1,b.life);
+      ctx2d.drawImage(spBurst,sx-sz,syp-sz,sz*2,sz*2);
+    }
+    ctx2d.globalCompositeOperation='source-over';
+    ctx2d.globalAlpha=1;
+    /* 暗角 */
+    let vg=ctx2d.createRadialGradient(OX,OY,Math.min(W,H)*0.36,OX,OY,Math.max(W,H)*0.75);
+    vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.5)');
+    ctx2d.fillStyle=vg;ctx2d.fillRect(0,0,W,H);
+  }
+
+  /* ---------- HUD（共用） ---------- */
+  if(now>hudNext){
+    hudNext=now+120;
+    const born=bornCount(t),prog=Math.min(1,t/12.6);
+    if(prog>=1&&!done){
+      done=true;doneAt=t;
+      spawnBurst();
+      words.classList.add('beat');
+    }
+    if(done){
+      genLabel.textContent='ETERNAL BLOOM ACHIEVED';
+      genLabel.style.color='#ff9dbd';
+      genPct.textContent='∞ 100%';
+    }else{
+      genPct.textContent=(prog*100).toFixed(1).padStart(5,'0')+'%';
+    }
+    genFill.style.width=(prog*100).toFixed(1)+'%';
+    pcount.textContent=born.toLocaleString('en-US');
+    fpsv.textContent=Math.min(60,Math.max(1,Math.round(1000/ema)));
+    revealConsole(prog);
+    const maxScroll=codeWrap.scrollHeight-codeWrap.clientHeight;
+    codeWrap.scrollTop=Math.min(maxScroll,prog*maxScroll*1.05);
+    const ln=Math.min(codeLines.length,1+Math.floor(prog*codeLines.length));
+    markCurrentLine(ln);
+    lncol.textContent=`Ln ${ln}, Col ${1+Math.floor(prog*36)}`;
+    if(rec&&rec.state==='recording'){
+      const el=t-recT0,mm=String(Math.floor(el/60)).padStart(2,'0'),ss=String(Math.floor(el%60)).padStart(2,'0');
+      recbtn.textContent=`● REC ${mm}:${ss}`;
+      if(el>28||(done&&t-doneAt>4)){
+        rec.stop();
+        recbtn.classList.remove('rec');
+        recbtn.textContent='● REC';
+      }
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- 绽放光爆 ---------- */
+function spawnBurst(){
+  const R=Math.random;
+  const birth=t;
+  for(let i=0;i<N_BURST;i++){
+    const th=R()*TAU,ph=Math.acos(2*R()-1),sp=.25+R()*.75;
+    burst.push({
+      x:Math.sin(ph)*Math.cos(th)*.1, y:.26+Math.cos(ph)*.07, z:Math.sin(ph)*Math.sin(th)*.1,
+      vx:Math.sin(ph)*Math.cos(th)*sp, vy:Math.abs(Math.cos(ph))*sp*.9+.12, vz:Math.sin(ph)*Math.sin(th)*sp,
+      life:1, decay:.4+R()*.55, s:1.2+R()*2.2, ph:R()*TAU, birth
+    });
+  }
+}
+
+/* ---------- 左侧代码（迷你 Python 高亮器） ---------- */
+const PY_SOURCE=[
+'# eternal_rose.py — a rose that blooms once and lives forever',
+'# WINDOWS PORTABLE / NO PYTHON REQUIRED',
+'from math import sin, cos, pi',
+'import random, time',
+'',
+'CANVAS_WIDTH  = 1280',
+'CANVAS_HEIGHT = 720',
+'FPS           = 60',
+'OUTPUT_FILE   = "rose_4k_60fps_gamma"',
+'RENDER        = True',
+'DOF_STRENGTH  = 0.95         # depth of field',
+'',
+'BLUSH_PINK  = (255, 133, 164)',
+'PEARL_WHITE = (255, 238, 240)',
+'STEM_GREEN  = (46, 120, 62)',
+'PETALS        = 180',
+'GOLDEN_ANGLE  = 2.39996      # 137.5° phyllotaxis',
+'ARRANGEMENT   = [((0.0, 0.26, 0.30), 1.05), ((-0.88, -0.06, 0.02), 0.70),',
+'                 ((0.88, -0.10, 0.10), 0.70), ((-0.76, -0.16, -0.50), 0.58),',
+'                 ((0.76, -0.12, -0.58), 0.58), ((0.0, 0.82, -0.28), 0.42),',
+'                 ((-1.20, 0.15, -0.80), 0.52)]',
+'ROSE_TINTS    = ("red", "coral", "hotpink", "crimson",',
+'                 "peach", "wine", "deepwine")',
+'STAGGER       = [0.55, 1.55, 1.90, 2.30, 2.65, 3.00, 3.40]',
+'',
+'',
+'class EternalRose:',
+'    """A rose that blooms once and lives forever."""',
+'',
+'    def __init__(self, center, radius, seed):',
+'        self.center = center',
+'        self.radius = radius',
+'        self.seed   = seed',
+'        self.petals = []',
+'        self.light  = Light(color=PEARL_WHITE)',
+'        self.birth_time = time.time()',
+'',
+'    def petal(self, k, u, v):',
+'        f   = k / PETALS                  # 0 = flower core, 1 = outermost',
+'        phi = k * GOLDEN_ANGLE            # 137.5° spiral',
+'        r0  = 0.035 + 0.30 * f ** 1.25',
+'        L   = 0.14 + 0.50 * f ** 1.6',
+'        th  = 0.30 + 1.35 * f ** 1.4 \\',
+'            + 0.35 * f * u * u            # outer petals reflex',
+'        w   = (0.10 + 0.16 * f) * sin(pi * u) ** 0.8',
+'        r   = r0 + sin(th) * L * u',
+'        return (r * cos(phi) - v * w * sin(phi),',
+'                0.02 + cos(th) * L * u,',
+'                r * sin(phi) + v * w * cos(phi))',
+'',
+'    def unfurl(self, now, birth):',
+'        k = int((now - birth) / 3.2 * PETALS)',
+'        for j in range(min(k, PETALS)):',
+'            for u in sample(0.0, 1.0, 33):',
+'                for v in sample(-1.0, 1.0, 11):',
+'                    self.petals.append(jitter(self.petal(j, u, v), self.seed))',
+'        self.light.breathe(now, strength=0.18)',
+'        return len(self.petals)',
+'',
+'',
+'class EverlastingBouquet:',
+'    def __init__(self, dedication="FOR YOU, ALWAYS"):',
+'        self.roses   = [EternalRose(pos, scale, SEED + i)',
+'                        for i, (pos, scale) in enumerate(ARRANGEMENT)]',
+'        self.sepals  = Sepals(count=5 * len(ARRANGEMENT))',
+'        self.camera  = Camera(fov=3.0, focus="hero", sway=0.22,',
+'                              dof=DOF_STRENGTH)',
+'        self.dedication = dedication',
+'',
+'    def generate(self, now):',
+'        total = sum(rose.unfurl(now, birth=STAGGER[i])',
+'                    for i, rose in enumerate(self.roses))',
+'        self.sepals.hug(now)',
+'        self.petals_fall(now, rate=30)',
+'        return total',
+'',
+'',
+'def main():',
+'    bouquet = EverlastingBouquet()',
+'    canvas.init(blend="additive", dpr=True)   # GPU point sprites',
+'    while RENDER:',
+'        now   = time.time()',
+'        total = bouquet.generate(now)',
+'        canvas.render(bouquet, dof=DOF_STRENGTH)',
+'        print(f"GENERATING ROSES {total / TARGET:06.1%}")',
+'        if total >= TARGET:',
+'            print("FOR YOU, ALWAYS \\u221e")',
+'            canvas.record("eternal_rose.mp4", until="bloom+4s")',
+'        canvas.flip(FPS)',
+'',
+'',
+'if __name__ == "__main__":',
+'    main()',
+];
+
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const KW=/^(class|def|return|for|in|if|elif|else|while|import|from|as|not|and|or|None|True|False|lambda|pass|break|continue|is)\b/;
+const BI=/^(sin|cos|pi|range|print|sum|len|time|random|sample|jitter|abs|min|max|float|int|str)\b/;
+
+function hlLine(line){
+  let out='',i=0;
+  while(i<line.length){
+    const rest=line.slice(i);
+    let m;
+    if(rest[0]==='#'){out+=`<span class="tok-cm">${esc(rest)}</span>`;break}
+    if((m=rest.match(/^f?"[^"]*"/))){out+=`<span class="tok-s">${esc(m[0])}</span>`;i+=m[0].length;continue}
+    if((m=rest.match(/^\s+/))){out+=m[0];i+=m[0].length;continue}
+    if((m=rest.match(KW))){out+=`<span class="tok-k">${m[0]}</span>`;i+=m[0].length;continue}
+    if((m=rest.match(/^self\b/))){out+=`<span class="tok-sl">self</span>`;i+=4;continue}
+    if((m=rest.match(/^\d+\.?\d*/))){out+=`<span class="tok-n">${m[0]}</span>`;i+=m[0].length;continue}
+    if((m=rest.match(/^[A-Za-z_]\w*/))){
+      const after=line.slice(i+m[0].length).match(/^\s*\(/);
+      if(/^[A-Z]/.test(m[0]))out+=`<span class="tok-c">${m[0]}</span>`;
+      else if(after||BI.test(m[0]))out+=`<span class="tok-f">${m[0]}</span>`;
+      else out+=m[0];
+      i+=m[0].length;continue;
+    }
+    out+=esc(rest[0]);i++;
+  }
+  return out||'&nbsp;';
+}
+
+const codeEl=document.getElementById('code');
+let codeLines=[];
+(function renderCode(){
+  let html='';
+  PY_SOURCE.forEach((line,idx)=>{
+    html+=`<div class="cl" data-ln="${idx}"><span class="no">${idx+1}</span><span class="tx">${hlLine(line)}</span></div>`;
+  });
+  codeEl.innerHTML=html;
+  codeLines=[...document.querySelectorAll('.cl')];
+})();
+let curLine=-1;
+function markCurrentLine(n){
+  if(n===curLine)return;
+  if(codeLines[curLine])codeLines[curLine].classList.remove('cur');
+  curLine=n;
+  if(codeLines[n])codeLines[n].classList.add('cur');
+}
+
+/* ---------- 终端输出（跟随进度滚动） ---------- */
+let CONSOLE=[],conIdx=0;
+function buildConsole(sd,total){
+  const lines=[];
+  lines.push({at:0.00,html:`<span class="c-p">$</span> ./eternal_rose.exe --seed ${sd}`});
+  lines.push({at:0.02,html:`<span class="c-d">[ok]</span> renderer: ${RNAME}${GL_OK?' · point sprites · additive':' · software fallback · additive'}`});
+  lines.push({at:0.03,html:GL_OK
+    ?`<span class="c-d">[ok]</span> depth of field: focus=hero dof=0.95 · rear-dim 30%`
+    :`<span class="c-d">[ok]</span> depth of field: gpu-only (skipped on software raster)`});
+  lines.push({at:0.04,html:`<span class="c-d">[ok]</span> point cloud: <span class="c-v">${total.toLocaleString('en-US')}</span> particles allocated`});
+  lines.push({at:0.05,html:`<span class="c-d">[ok]</span> phyllotaxis: golden angle <span class="c-v">137.5°</span> · ${TOTAL_PETALS} petals · ${ROSES.length} roses`});
+  lines.push({at:0.06,html:`<span class="c-d">[ok]</span> cultivars: red · coral · hotpink · crimson · peach · wine · deepwine`});
+  lines.push({at:0.07,html:`<span class="c-d">[ok]</span> camera: gentle sway <span class="c-v">±12.6°</span> · mouse parallax · no orbit`});
+  lines.push({at:0.08,html:`<span class="c-d">[ok]</span> florist mode: ${ROSES.length} roses + baby's breath · ivory wrap <span class="c-v">satin bow</span> · leaves <span class="c-v">${GL_OK?6:4}</span>`});
+  lines.push({at:0.42,html:`bud stage · <span class="c-v">${ROSES.length}</span> heads closed · sepals hugging`});
+  lines.push({at:0.50,html:`rose <span class="c-v">#1</span> unfurling · main bloom opening sweep`});
+  lines.push({at:0.62,html:`bloom wave sweeping roses <span class="c-v">#2 → #${ROSES.length}</span> · cascading`});
+  lines.push({at:0.86,html:`all heads reflexed to <span class="c-v">117°</span> · full bouquet`});
+  lines.push({at:0.90,html:`sepals: <span class="c-v">${5*ROSES.length}</span> · leaves: <span class="c-v">${GL_OK?6:4}</span> · stems: <span class="c-v">${ROSES.length}</span>`});
+  lines.push({at:0.95,html:`falling petals: <span class="c-v">${N_FALL}</span> · morning dew: <span class="c-v">${N_DEW}</span> · bokeh: <span class="c-v">${N_BOKEH}</span>`});
+  lines.push({at:1.00,html:`GENERATING BOUQUET <span class="c-v">100.0%</span> — ${ROSES.length} roses in full bloom`});
+  lines.push({at:1.00,html:`<span class="c-w">FOR YOU, ALWAYS ∞</span>`});
+  CONSOLE=lines;
+  conIdx=0;
+  conLines.innerHTML='';
+}
+function revealConsole(prog){
+  while(conIdx<CONSOLE.length&&prog>=CONSOLE[conIdx].at){
+    const d=document.createElement('div');
+    d.className='ln';d.innerHTML=CONSOLE[conIdx].html;
+    conLines.appendChild(d);
+    conIdx++;
+    conLines.scrollTop=conLines.scrollHeight;
+  }
+}
+
+/* ---------- 时钟 ---------- */
+function tick(){
+  const d=new Date(),h=String(d.getHours()).padStart(2,'0'),m=String(d.getMinutes()).padStart(2,'0');
+  document.getElementById('clockTime').textContent=`${h}:${m}`;
+}
+tick();setInterval(tick,15000);
+
+/* ---------- 录制导出 ---------- */
+function startRec(){
+  if(rec&&rec.state==='recording'){rec.stop();recbtn.classList.remove('rec');recbtn.textContent='● REC';return}
+  if(!('MediaRecorder' in window)||!cv.captureStream){
+    recbtn.textContent='N/A';setTimeout(()=>recbtn.textContent='● REC',1500);return;
+  }
+  const stream=cv.captureStream(60);
+  const mime=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm']
+    .find(m=>MediaRecorder.isTypeSupported(m))||'';
+  try{
+    rec=new MediaRecorder(stream,{mimeType:mime||undefined,videoBitsPerSecond:12000000});
+  }catch(e){recbtn.textContent='N/A';setTimeout(()=>recbtn.textContent='● REC',1500);return}
+  recChunks=[];
+  rec.ondataavailable=e=>{if(e.data.size)recChunks.push(e.data)};
+  rec.onstop=()=>{
+    const blob=new Blob(recChunks,{type:mime||'video/webm'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='eternal_rose.'+(mime.includes('mp4')?'mp4':'webm');
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    rec=null;recbtn.classList.remove('rec');recbtn.textContent='● REC';
+  };
+  rebloom();
+  rec.start(250);recT0=t;
+  recbtn.classList.add('rec');
+}
+recbtn.addEventListener('click',startRec);
+
+/* ---------- 重生 ---------- */
+function rebloom(){
+  seed=(Math.random()*1e9)|0;
+  buildAll();
+  t=0;done=false;doneAt=0;burst.length=0;
+  genLabel.textContent='GENERATING ROSES';genLabel.style.color='#c98ca4';
+  words.classList.remove('beat');
+}
+document.getElementById('reseed').addEventListener('click',rebloom);
+document.getElementById('stage').addEventListener('dblclick',rebloom);
+
+buildAll();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
