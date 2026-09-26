@@ -6,3 +6,4 @@ node_modules/
 .screenshots/
 .uploads/
 .trae-html-share-packages/
+bouquet-check.js
