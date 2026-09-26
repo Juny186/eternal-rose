@@ -3,3 +3,6 @@ node_modules/
 *.log
 *.ppm
 /tmp/
+.screenshots/
+.uploads/
+.trae-html-share-packages/
